@@ -1,7 +1,6 @@
 from typing import List, Tuple
 import torch as th
 import nltk
-import sklearn
 import numpy as np
 import pandas as pd
 

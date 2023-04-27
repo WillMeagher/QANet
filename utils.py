@@ -1,10 +1,17 @@
 import nltk
 from nltk.tokenize import word_tokenize, sent_tokenize
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, wordnet
 from nltk.stem import WordNetLemmatizer
 from string import punctuation
-
+# from transformers import BertTokenizer, BertModel
+import torch
+import spacy
 ## You may need to download stopwords and wordnet with the following: nltk.download('wordnet')
+# tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+# model = BertModel.from_pretrained('bert-base-uncased')
+# nlp1 = spacy.load('en_trf_bertbaseuncased_lg')
+nlp2 = spacy.load('en_core_web_lg')
+nlp3 = spacy.load('en_core_web_sm')
 
 class utils:
 ## Text Preprocessing
@@ -39,6 +46,17 @@ class utils:
         """
         return sent_tokenize(text)
 
+    def word_embedding(text: str, contexual: bool = False) -> torch.tensor:
+        """
+        This will return a word embedding of the text.
+        return: List[str]
+        """
+        if contexual:
+            return torch.tensor(nlp2(text).vector)
+        else:
+            return torch.tensor(nlp3(text).vector)
+
+
 ## General Utils
     def get_top_n(lst: list, n: int) -> list:
         """
@@ -47,4 +65,5 @@ class utils:
         """
         lst.sort(reverse = True)
         return lst[:n]
+    
         
