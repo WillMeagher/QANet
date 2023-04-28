@@ -8,62 +8,109 @@ from utils import utils
 
 class RNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
-        print("in init")
-        """
-        Initialize the model by setting up the various layers.
-        """
         super(RNN, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.i2h = nn.Linear(input_size + hidden_size, hidden_size)
-        self.i2o = nn.Linear(input_size + hidden_size, output_size)
-        self.softmax = nn.LogSoftmax(dim=1)
+        self.output_size = output_size
 
+        self.rnn = th.nn.RNN(input_size, hidden_size)
+        self.linear = th.nn.Linear(hidden_size, output_size)
 
-    def forward(self, input, hidden):
-        print("in forward")
-        """
-        Perform a forward pass of our model on some input and hidden state.
-        """
-        combined = th.cat((input, hidden), 1)
-        hidden = self.i2h(combined)
-        output = self.i2o(combined)
-        output = self.softmax(output)
-        return output, hidden
+    def forward(self, x):
+        x = x.view(-1, self.input_size)
+        h = th.zeros(1, self.hidden_size)
+        out, hidden = self.rnn(x, h)
+        out = self.linear(out)
+        return out, hidden
+    
         
-
-    def init_hidden(self):
-        print("in init_hidden")
+    def init_hidden(self, batch_size=1):
         """
         Initializes hidden state, of zeros.
         """
-        return th.zeros(1, self.hidden_size)
+        return th.zeros(batch_size, self.hidden_size)
         
-    # def __call__(self, question, num_guesses=1) -> list[str]:
-    #     """
-    #     This function accepts a string representing a question and returns a list of tuples containing
-    #     strings representing the guess.
-    #     """
-    #     print("in __call__")
-    #     pass
+    # Not working yet
+    def train(self, input,loss_fn, optimizer, epochs, batch_size):
+        print(f"Starting Training on {epochs} epochs with batch size {batch_size}")
+        for epoch in range(epochs):
+            print(f"Epoch {epoch+1}")
+            train_loader = th.utils.data.DataLoader(input, batch_size=batch_size, shuffle=True)
+            for inputs, labels in train_loader:
+                inputs = list(inputs)
+                labels = list(labels)
 
-    def train(self, im_not_sure_what_to_put_here):
-        """
-        This function trains the model on the data for the given number of epochs.
-        """
-        print("in train")
-        pass
 
+                inputs = [utils.clean_text(quest) for quest in inputs]
+                inputs = [utils.tokenize_text_words(quest) for quest in inputs]
+                inputs = [[utils.word_embedding(tensor) for tensor in quest] for quest in inputs]
+
+
+                labels = [utils.clean_text(quest) for quest in labels]
+                labels = [utils.tokenize_text_words(quest) for quest in labels]
+                labels = [[utils.word_embedding(tensor) for tensor in quest] for quest in labels]
+
+        
+                # Forward pass
+                for idx in range(len(inputs)):
+                    x = th.stack(inputs[idx])
+                    y = th.stack(labels[idx])
+
+                    output, _ = self(x)
+                    print(output.shape)
+                    print(y.shape)
+
+                    # Calculate the loss
+                    loss = loss_fn(output, y)
+
+                    # Backpropagate the loss
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step() 
+            print("Epoch Loss: ", loss.item())
+        print("Training Complete")
+        return output, loss.item()
+
+    # Not working yet
+    def eval(self, input, batch_size):
+        correct = 0
+        total = 0
+        train_loader = th.utils.data.DataLoader(input, batch_size=batch_size, shuffle=True)
+        for inputs, labels in train_loader:
+            inputs = list(inputs)
+            labels = list(labels)
+
+
+            inputs = [utils.clean_text(quest) for quest in inputs]
+            inputs = [utils.tokenize_text_words(quest) for quest in inputs]
+            inputs = [[utils.word_embedding(tensor) for tensor in quest] for quest in inputs]
+            # inputs = torch.stack(inputs)
+
+
+            labels = [utils.clean_text(quest) for quest in labels]
+            labels = [utils.tokenize_text_words(quest) for quest in labels]
+            labels = [[utils.word_embedding(tensor) for tensor in quest] for quest in labels]
+
+        # Forward pass
+        for idx in range(len(inputs)):
+            x = th.stack(inputs[idx])
+            y = th.stack(labels[idx])
+
+            output = self(x)
+
+            correct += (output == y).sum().item()
+            accuracy = correct / batch_size
+            print("Accuracy:", accuracy)
+
+            
     def save(self, path: str):
         """
         This function saves the model to the path.
         """
-        print("in save")
         pass
 
     def load(self, path: str):
         """
         This function loads the model from the path.
         """
-        print("in load")
         pass
