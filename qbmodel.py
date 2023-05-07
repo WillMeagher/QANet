@@ -3,6 +3,7 @@ import torch as th
 import nltk
 import numpy as np
 import pandas as pd
+import pyserini_guesser
 
 """
 Our plan is to use a RNN to predict the answers to questions.
@@ -46,7 +47,10 @@ class QuizBowlModel:
         Do NOT load your model or resources in the guess_and_buzz() function, 
         as it will increase latency severely. 
         """
-        pass
+        guesser = pyserini_guesser.pyserini_guesser('data/small.guesstrain.json', 10)
+        self.guesser = guesser
+
+        
 
     def guess_and_buzz(self, question_text: List[str]) -> List[Tuple[str, bool]]:
         """
@@ -59,4 +63,9 @@ class QuizBowlModel:
         If you are using a deep learning model, try to use batched prediction instead of 
         iterating using a for loop.
         """
-        pass
+        guesses = []
+        for question in question_text:
+            guess = (self.guesser(question, 1)[0].raw)
+            score = self.guesser(question, 1)[0].score
+            guesses.append([guess, score])
+        return guesses
