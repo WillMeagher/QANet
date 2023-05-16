@@ -1,27 +1,13 @@
-from transformers import pipeline, AutoTokenizer, AutoModelForQuestionAnswering
-import torch
+from transformers import pipeline
 import document_retrieval
 
-model_path = "qa_model/checkpoint-4000"
+model_path = "generator/models/deberta-base-downstream-1"
+# model_path = "generator/models/deberta-base-3"
 
 question_answerer = pipeline("question-answering", model=model_path)
-model = AutoModelForQuestionAnswering.from_pretrained(model_path)
-tokenizer = AutoTokenizer.from_pretrained(model_path)
 
 def get_answer(question, context):
-
-    question_answerer(question=question, context=context)
-    inputs = tokenizer(question, context, return_tensors="pt")
-
-    with torch.no_grad():
-        outputs = model(**inputs)
-
-    answer_start_index = outputs.start_logits.argmax()
-    answer_end_index = outputs.end_logits.argmax()
-
-    predict_answer_tokens = inputs.input_ids[0, answer_start_index : answer_end_index + 1]
-    answer = tokenizer.decode(predict_answer_tokens)
-
+    answer = question_answerer(question=question, context=context)    
     return answer
 
 def get_context(question):
@@ -29,7 +15,10 @@ def get_context(question):
     context = " ".join(hits)
     return context
 
-question = "In 1903, the first woman ever won the Nobel Prize. What was her name?"
+question = "How tall is the Eiffel tower?"
+
 context = get_context(question)
+print(context)
+
 answer = get_answer(question, context)
-print(answer)
+print(answer["answer"])

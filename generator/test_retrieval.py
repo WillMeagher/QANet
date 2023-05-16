@@ -1,9 +1,6 @@
-from datasets import load_from_disk, load_dataset
 from transformers import AutoTokenizer, DefaultDataCollator, AutoModelForQuestionAnswering, TrainingArguments, Trainer
+from datasets import load_from_disk, load_dataset
 
-# squad = load_from_disk("squad_new")
-squad = load_dataset("squad", split="train")
-squad = squad.train_test_split(test_size=0.2)
 
 tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
                                           
@@ -11,7 +8,7 @@ def preprocess_function(examples):
     questions = [q.strip() for q in examples["question"]]
     inputs = tokenizer(
         questions,
-        examples["context"],
+        examples["new_context"],
         max_length=384,
         truncation=True,
         return_offsets_mapping=True,
@@ -38,6 +35,8 @@ def preprocess_function(examples):
             idx += 1
         context_end = idx - 1
 
+        print(offset)
+
         # If the answer is not fully inside the context, label it (0, 0)
         if offset[context_start][0] > end_char or offset[context_end][1] < start_char:
             start_positions.append(0)
@@ -58,33 +57,20 @@ def preprocess_function(examples):
     inputs["end_positions"] = end_positions
     return inputs
 
+squad = load_from_disk("generator/data/squad_bad_test")
+squad = squad.train_test_split(test_size=0.2)
 
 tokenized_squad = squad.map(preprocess_function, batched=True, remove_columns=squad["train"].column_names)
 
+print(tokenized_squad['train'][0])
 
-data_collator = DefaultDataCollator()
+answer_in_context = 0
+for i, example in enumerate(tokenized_squad['train']):
+    if example["start_positions"] != 0 or example["end_positions"] != 0:
+        answer_in_context += 1
+    
+    if i % 10000 == 0:
+        print(i / len(tokenized_squad['train']))
 
-model = AutoModelForQuestionAnswering.from_pretrained("distilbert-base-uncased")
-
-training_args = TrainingArguments(
-    output_dir="generator/models/distilbert-base-downstream-3",
-    evaluation_strategy="epoch",
-    learning_rate=3e-5,
-    per_device_train_batch_size=16,
-    per_device_eval_batch_size=16,
-    num_train_epochs=3,
-    weight_decay=0.005,
-    save_strategy="no",
-)
-
-trainer = Trainer(
-    model=model,
-    args=training_args,
-    train_dataset=tokenized_squad["train"],
-    eval_dataset=tokenized_squad["test"],
-    tokenizer=tokenizer,
-    data_collator=data_collator,
-)
-
-trainer.train()
-trainer.save_model("generator/models/distilbert-base-downstream-3")
+print()
+print(answer_in_context / len(tokenized_squad['train']))
